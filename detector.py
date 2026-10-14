@@ -2,8 +2,6 @@
 """
 detector.py —— 垃圾溢出检测的 YOLO 封装与结果统计
 
-本模块只负责“模型 + 统计”，不涉及任何 PyQt 界面代码，方便单独测试。
-
 类别定义（与训练时 data.yaml 一致）：
     0 -> 溢出的垃圾
     1 -> 垃圾
@@ -18,21 +16,20 @@ import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
+from config import MODEL_PATH, CONF_THRESHOLD, STATION_ID, FROZEN, RESOURCE_ROOT
+
 # ---------------------------------------------------------------------------
 # 全局常量
 # ---------------------------------------------------------------------------
 
 #: 训练好的模型权重（固定路径，模块内可直接被 main.py 引用）
-MODEL_PATH = r"C:\Users\李佳钰\PycharmProjects\stair_obstacle_project\runs\trash_overflow_800\weights\best.pt"
 
 #: 统一检测置信度
-CONF_THRESHOLD = 0.40
 
 #: 推理尺寸
 IMG_SIZE = 640
 
 #: 监控站点编号（界面上 label_station 显示的就是它）
-STATION_ID = "S001"
 
 #: 类别编号 -> 中文名称
 CLASS_NAMES = {
@@ -204,7 +201,6 @@ class TrashOverflowDetector:
     # ---- 加载 ----
 
     def load(self):
-        """加载模型；失败时抛 DetectorError。"""
         if self._model is not None:
             return self._model
 
@@ -217,6 +213,12 @@ class TrashOverflowDetector:
 
         try:
             from ultralytics import YOLO
+            if FROZEN:
+                # 使用随包提供的开源字体，离线电脑不尝试下载中文字体。
+                from ultralytics.utils import plotting
+                font_path = RESOURCE_ROOT / 'fonts' / 'NotoSansCJKsc-Regular.otf'
+                if font_path.is_file():
+                    plotting.check_font = lambda _font='Arial.ttf': str(font_path)
         except Exception as exc:  # pragma: no cover - 环境问题
             raise DetectorError(
                 "无法导入 ultralytics，请先安装：pip install ultralytics\n原始错误：{}".format(exc)
